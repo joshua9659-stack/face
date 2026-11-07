@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>귀여운 동물 실시간 아바타 (VTuber)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Font import (Inter & Noto Sans KR) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Noto Sans KR', 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    
+    /* 캐릭터 배경 테마 */
+    .bg-theme-cat { background: linear-gradient(135deg, #fff5f5 0%, #fed7aa 50%, #fef08a 100%); }
+    .bg-theme-rabbit { background: linear-gradient(135deg, #fdf2f8 0%, #fbcfe8 50%, #ddd6fe 100%); }
+    .bg-theme-bear { background: linear-gradient(135deg, #fefce8 0%, #fef08a 50%, #fed7aa 100%); }
+
+    /* 미러링 처리 */
+    .mirror {
+      transform: scaleX(-1);
+    }
+
+    /* 커스텀 스크롤바 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.15);
+      border-radius: 9999px;
+    }
+
+    /* 로딩 스피너 */
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border-left-color: #ec4899;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-theme-cat min-h-screen transition-all duration-700 text-slate-800 flex flex-col justify-between">
+
+  <!-- Header Header Header -->
+  <header class="p-4 md:px-8 flex justify-between items-center w-full z-20 backdrop-blur-md bg-white/40 border-b border-white/40">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-400 to-amber-300 flex items-center justify-center text-white shadow-md font-bold text-xl">
+        🐾
+      </div>
+      <div>
+        <h1 class="font-extrabold text-lg md:text-xl text-slate-800 tracking-tight leading-none">모션 아바타 버츄얼 스튜디오</h1>
+        <p class="text-xs text-slate-500 font-medium mt-0.5">내 표정과 고개를 실시간으로 따라하는 캐릭터</p>
+      </div>
+    </div>
+
+    <!-- 우측 컨트롤 버튼들 -->
+    <div class="flex items-center gap-2">
+      <button id="btn-calibrate" title="무표정 상태로 보정" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white/80 hover:bg-white text-slate-700 rounded-xl text-xs font-semibold shadow-sm border border-slate-200/80 transition-all active:scale-95">
+        <i data-lucide="crosshair" class="w-4 h-4 text-pink-500"></i>
+        <span>내 표정 맞추기</span>
+      </button>
+      <button id="btn-screenshot" title="스크린샷 저장" class="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95">
+        <i data-lucide="camera" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">스크린샷</span>
+      </button>
+      <button id="btn-toggle-debug" title="디버그 패널" class="p-2 bg-white/80 hover:bg-white text-slate-700 rounded-xl text-xs font-semibold shadow-sm border border-slate-200/80 transition-all">
+        <i data-lucide="activity" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 뷰포트 -->
+  <main class="flex-1 relative flex flex-col items-center justify-center p-4 min-h-[500px]">
+    
+    <!-- 시작 전 안내 스크린 -->
+    <div id="start-overlay" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/70 backdrop-blur-md p-6 text-center">
+      <div class="max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border border-white/60 flex flex-col items-center">
+        <div class="w-20 h-20 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center text-4xl mb-4 shadow-inner">
+          🐱
+        </div>
+        <h2 class="text-2xl font-black text-slate-800 mb-2">실시간 모션 아바타</h2>
+        <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+          웹캠을 켜면 귀여운 고양이, 토끼, 곰 인형이 내 눈 깜빡임, 입 모양, 시선 및 고개 회전을 실시간으로 흉내 냅니다!
+        </p>
+        
+        <button id="btn-start-camera" class="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 text-white font-bold rounded-2xl shadow-lg shadow-pink-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-base">
+          <i data-lucide="video" class="w-5 h-5"></i>
+          <span>카메라 시작하기</span>
+        </button>
+
+        <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+          <span>영상은 서버로 전송되지 않고 브라우저 내에서만 처리돼요.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 로딩 지디케이터 -->
+    <div id="loading-overlay" class="hidden absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/80 backdrop-blur-md">
+      <div class="spinner mb-4"></div>
+      <p id="loading-text" class="text-slate-700 font-bold text-sm">AI 비전 모델 로딩 중...</p>
+      <p class="text-xs text-slate-400 mt-1">잠시만 기다려 주세요 (WASM Delegate)</p>
+    </div>
+
+    <!-- 에러 모달 -->
+    <div id="error-overlay" class="hidden absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div class="max-w-md w-full bg-white p-6 rounded-3xl shadow-2xl text-center">
+        <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <h3 id="error-title" class="text-lg font-bold text-slate-800 mb-1">카메라 접근 실패</h3>
+        <p id="error-msg" class="text-xs text-slate-600 mb-6 leading-relaxed">카메라 권한이 거부되었거나 장치를 찾을 수 없습니다.</p>
+        <div class="flex gap-2">
+          <button id="btn-error-retry" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all">재시도</button>
+          <a id="btn-error-newtab" href="" target="_blank" class="hidden flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1">
+            <span>새 탭에서 열기</span>
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 캘리브레이션 카운트다운 오버레이 -->
+    <div id="calibrate-overlay" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/30 backdrop-blur-xs pointer-events-none">
+      <div class="bg-white/90 px-8 py-6 rounded-3xl shadow-xl flex flex-col items-center animate-bounce">
+        <span class="text-xs font-bold text-pink-500 mb-1">내 표정 기준점 설정 중</span>
+        <span id="calibrate-count" class="text-5xl font-black text-slate-800">3</span>
+        <span class="text-xs text-slate-500 mt-2">정면을 보고 편안한 무표정을 유지하세요</span>
+      </div>
+    </div>
+
+    <!-- 상태 알림 바 ("얼굴을 찾고 있어요") -->
+    <div id="status-badge" class="absolute top-6 left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 bg-white/80 backdrop-blur-md rounded-full shadow-sm border border-white/60 text-xs font-semibold text-slate-600 flex items-center gap-2 transition-all opacity-0 pointer-events-none">
+      <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+      <span id="status-badge-text">얼굴을 찾고 있어요 👀</span>
+    </div>
+
+    <!-- 캐릭터 SVG가 렌더링될 메인 컨테이너 -->
+    <div id="avatar-container" class="w-full max-w-[480px] aspect-square relative flex items-center justify-center transition-all duration-300">
+      <!-- JS로 동적 삽입됨 -->
+    </div>
+
+    <!-- 오른쪽 아래 내 웹캠 소형 미리보기 -->
+    <div id="webcam-preview-wrapper" class="absolute bottom-4 right-4 z-20 transition-all duration-300">
+      <div class="relative group">
+        <video id="webcam-video" class="w-28 h-28 md:w-36 md:h-36 object-cover rounded-2xl shadow-lg border-2 border-white mirror bg-slate-900" autoplay playsinline muted></video>
+        <!-- 웹캠 토글 버튼 -->
+        <button id="btn-toggle-cam" class="absolute -top-2 -right-2 p-1.5 bg-white text-slate-700 hover:text-pink-500 rounded-full shadow-md border border-slate-100 transition-all">
+          <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 디버그 패널 -->
+    <div id="debug-panel" class="hidden absolute top-4 left-4 z-20 w-64 bg-slate-900/85 backdrop-blur-md text-emerald-400 font-mono text-[10px] p-3 rounded-2xl shadow-xl border border-slate-700 space-y-1 leading-tight">
+      <div class="text-white font-bold border-b border-slate-700 pb-1 mb-1 flex justify-between">
+        <span>실시간 랜드마크 디버그</span>
+        <span id="fps-counter">0 FPS</span>
+      </div>
+      <div>Yaw: <span id="dbg-yaw">0</span>° | Pitch: <span id="dbg-pitch">0</span>° | Roll: <span id="dbg-roll">0</span>°</div>
+      <div>Eye Blink (L/R): <span id="dbg-blink-l">0</span> / <span id="dbg-blink-r">0</span></div>
+      <div>Jaw Open: <span id="dbg-jaw">0</span></div>
+      <div>Mouth Smile: <span id="dbg-smile">0</span></div>
+      <div>Tongue Out: <span id="dbg-tongue">0</span></div>
+      <div>Cheek Puff: <span id="dbg-puff">0</span></div>
+    </div>
+
+  </main>
+
+  <!-- 하단 컨트롤 & 캐릭터 선택 바 -->
+  <footer class="p-4 md:px-8 z-20 backdrop-blur-md bg-white/40 border-t border-white/40 flex flex-col md:flex-row items-center justify-between gap-4">
+    
+    <!-- 캐릭터 셀렉터 (3종) -->
+    <div class="flex items-center gap-2 bg-white/60 p-1.5 rounded-2xl border border-white/80 shadow-sm w-full md:w-auto justify-center">
+      <button data-char="cat" class="char-btn flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 bg-pink-500 text-white shadow-md shadow-pink-500/20">
+        <span class="text-base">🐱</span>
+        <span>고양이</span>
+      </button>
+      <button data-char="rabbit" class="char-btn flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-slate-600 hover:bg-white/80">
+        <span class="text-base">🐰</span>
+        <span>토끼</span>
+      </button>
+      <button data-char="bear" class="char-btn flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-slate-600 hover:bg-white/80">
+        <span class="text-base">🐻</span>
+        <span>곰</span>
+      </button>
+    </div>
+
+    <!-- 민감도 조절 슬라이더 및 캘리브레이션(모바일 대응) -->
+    <div class="flex items-center gap-4 w-full md:w-auto justify-end text-xs text-slate-600 bg-white/60 px-4 py-2 rounded-2xl border border-white/80 shadow-sm">
+      <div class="flex items-center gap-2">
+        <label for="slider-blink" class="font-semibold whitespace-nowrap">눈 민감도</label>
+        <input type="range" id="slider-blink" min="0.5" max="2.0" step="0.1" value="1.0" class="w-16 accent-pink-500 cursor-pointer">
+      </div>
+      <div class="h-3 w-[1px] bg-slate-300"></div>
+      <div class="flex items-center gap-2">
+        <label for="slider-mouth" class="font-semibold whitespace-nowrap">입 민감도</label>
+        <input type="range" id="slider-mouth" min="0.5" max="2.0" step="0.1" value="1.0" class="w-16 accent-pink-500 cursor-pointer">
+      </div>
+    </div>
+  </footer>
+
+  <!-- MediaPipe Tasks Vision CDN (WASM + JS) -->
+  <script type="module">
+    import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+    /* =========================================================================
+     * 1. 전역 설정 및 튜닝 포인트 상수 (Tuning Point)
+     * ========================================================================= */
+    const CONFIG = {
+      // 오일러 각 클램프 (각도 제한)
+      YAW_LIMIT: 35,      // 좌우 고개 회전 최대각 (도)
+      PITCH_LIMIT: 25,    // 상하 고개 회전 최대각 (도)
+      ROLL_LIMIT: 30,     // 고개 기울임 최대각 (도)
+
+      // 패럴랙스 이동 범위 (픽셀)
+      PARALLAX_X: 25,     // Yaw에 따른 얼굴 내부 파츠 좌우 이동 폭
+      PARALLAX_Y: 20,     // Pitch에 따른 얼굴 내부 파츠 상하 이동 폭
+
+      // 귀 관성/스프링 계수
+      EAR_SPRING_STIFFNESS: 0.12,
+      EAR_SPRING_DAMPING: 0.75,
+
+      // EMA 스무딩 계수 (Alpha: 0에 가까울수록 부드럽고 둔감, 1에 가까울수록 민감)
+      SMOOTH_POSE: 0.2,       // 고개 회전 스무딩
+      SMOOTH_EXPRESSION: 0.25, // 입/눈썹 등 표정 스무딩
+      SMOOTH_BLINK: 0.55,      // 눈 깜빡임 (반응성을 위해 높게 설정)
+
+      // 디폴트 캘리브레이션 오프셋
+      DEFAULT_OFFSETS: {
+        eyeBlinkLeft: 0,
+        eyeBlinkRight: 0,
+        jawOpen: 0,
+        mouthSmileLeft: 0,
+        mouthSmileRight: 0
+      }
+    };
+
+    /* =========================================================================
+     * 2. 캐릭터 SVG 정의 (고양이, 토끼, 곰)
+     * 파츠별 ID 공통 규칙:
+     * - root-head, ears-left, ears-right, face-bg, eye-left, eye-right,
+     *   pupil-left, pupil-right, eyelid-left, eyelid-right, eyebrow-left, eyebrow-right,
+     *   nose, mouth-path, mouth-inside, tongue, cheek-left, cheek-right, whiskers
+     * ========================================================================= */
+    const CHARACTERS = {
+      cat: {
+        name: "고양이",
+        themeClass: "bg-theme-cat",
+        svg: `
+          <svg viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+            <!-- 섀도우 -->
+            <ellipse cx="200" cy="370" rx="110" ry="14" fill="rgba(0,0,0,0.08)" />
+
+            <!-- 머리 전체 그룹 (Roll & Pitch 이동의 대상) -->
+            <g id="root-head" transform-origin="200 220">
+              
+              <!-- 귀 (관성 적용) -->
+              <g id="ears-left" transform-origin="120 120">
+                <path d="M 80,160 L 40,60 Q 110,70 140,120 Z" fill="#FFA8A8" stroke="#4A3E3D" stroke-width="8" stroke-linejoin="round" />
+                <path d="M 85,145 L 58,78 Q 105,88 128,120 Z" fill="#FFD1D1" />
+              </g>
+              <g id="ears-right" transform-origin="280 120">
+                <path d="M 320,160 L 360,60 Q 290,70 260,120 Z" fill="#FFA8A8" stroke="#4A3E3D" stroke-width="8" stroke-linejoin="round" />
+                <path d="M 315,145 L 342,78 Q 295,88 272,120 Z" fill="#FFD1D1" />
+              </g>
+
+              <!-- 얼굴 바탕 베이스 -->
+              <ellipse id="face-bg" cx="200" cy="210" rx="140" ry="125" fill="#FFF5F5" stroke="#4A3E3D" stroke-width="8" />
+
+              <!-- 얼굴 내 파츠 그룹 (Yaw/Pitch 패럴랙스 대상) -->
+              <g id="face-features">
+                
+                <!-- 볼터치 -->
+                <ellipse id="cheek-left" cx="115" cy="235" rx="20" ry="12" fill="#FF8E8E" opacity="0.6" />
+                <ellipse id="cheek-right" cx="285" cy="235" rx="20" ry="12" fill="#FF8E8E" opacity="0.6" />
+
+                <!-- 수염 -->
+                <g id="whiskers" stroke="#4A3E3D" stroke-width="5" stroke-linecap="round">
+                  <path d="M 80,225 L 20,215 M 80,235 L 15,238 M 80,245 L 25,260" />
+                  <path d="M 320,225 L 380,215 M 320,235 L 385,238 M 320,245 L 375,260" />
+                </g>
+
+                <!-- 눈썹 -->
+                <g stroke="#4A3E3D" stroke-width="6" stroke-linecap="round" fill="none">
+                  <path id="eyebrow-left" d="M 125,145 Q 145,138 165,145" />
+                  <path id="eyebrow-right" d="M 235,145 Q 255,138 275,145" />
+                </g>
+
+                <!-- 왼쪽 눈 -->
+                <g id="eye-left-group">
+                  <g id="eye-left" transform-origin="145 185">
+                    <ellipse cx="145" cy="185" rx="24" ry="28" fill="#4A3E3D" />
+                    <!-- 동공 & 하이라이트 -->
+                    <g id="pupil-left">
+                      <ellipse cx="145" cy="185" rx="14" ry="20" fill="#2B2625" />
+                      <circle cx="138" cy="175" r="7" fill="#FFFFFF" />
+                      <circle cx="152" cy="193" r="3.5" fill="#FFFFFF" />
+                    </g>
+                    <!-- 눈꺼풀 (깜빡임 표현) -->
+                    <path id="eyelid-left" d="M 115,150 L 175,150 L 175,150 A 25 25 0 0 1 115 150 Z" fill="#FFF5F5" stroke="#4A3E3D" stroke-width="6" style="display:none;" />
+                  </g>
+                </g>
+
+                <!-- 오른쪽 눈 -->
+                <g id="eye-right-group">
+                  <g id="eye-right" transform-origin="255 185">
+                    <ellipse cx="255" cy="185" rx="24" ry="28" fill="#4A3E3D" />
+                    <g id="pupil-right">
+                      <ellipse cx="255" cy="185" rx="14" ry="20" fill="#2B2625" />
+                      <circle cx="248" cy="175" r="7" fill="#FFFFFF" />
+                      <circle cx="262" cy="193" r="3.5" fill="#FFFFFF" />
+                    </g>
+                    <path id="eyelid-right" d="M 225,150 L 285,150 L 285,150 A 25 25 0 0 1 225 150 Z" fill="#FFF5F5" stroke="#4A3E3D" stroke-width="6" style="display:none;" />
+                  </g>
+                </g>
+
+                <!-- 코 -->
+                <polygon id="nose" points="200,210 190,200 210,200" fill="#FF7B9C" rx="3" stroke="#4A3E3D" stroke-width="3" stroke-linejoin="round" />
+
+                <!-- 입 (벌어짐 & 혀 표현) -->
+                <g id="mouth-group" transform="translate(0, 5)">
+                  <!-- 입 안쪽 (벌렸을 때 고임) -->
+                  <path id="mouth-inside" d="M 180,225 Q 200,225 220,225 Q 200,270 180,225 Z" fill="#991B1B" style="display:none;" />
+                  <!-- 혀 -->
+                  <path id="tongue" d="M 188,242 Q 200,232 212,242 Q 200,265 188,242 Z" fill="#FF7B9C" style="display:none;" />
+                  <!-- 입 라인 (기본 삼각 고양이 입) -->
+                  <path id="mouth-path" d="M 180,225 Q 190,233 200,224 Q 210,233 220,225" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round" />
+                </g>
+
+              </g> <!-- end face-features -->
+            </g> <!-- end root-head -->
+          </svg>
+        `
+      },
+      rabbit: {
+        name: "토끼",
+        themeClass: "bg-theme-rabbit",
+        svg: `
+          <svg viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+            <ellipse cx="200" cy="370" rx="100" ry="14" fill="rgba(0,0,0,0.08)" />
+
+            <g id="root-head" transform-origin="200 230">
+              
+              <!-- 길쭉한 토끼 귀 -->
+              <g id="ears-left" transform-origin="130 140">
+                <rect x="95" y="10" width="45" height="150" rx="22" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="8" transform="rotate(-10 117 85)" />
+                <rect x="105" y="25" width="25" height="120" rx="12" fill="#FBCFE8" transform="rotate(-10 117 85)" />
+              </g>
+              <g id="ears-right" transform-origin="270 140">
+                <rect x="260" y="10" width="45" height="150" rx="22" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="8" transform="rotate(10 282 85)" />
+                <rect x="270" y="25" width="25" height="120" rx="12" fill="#FBCFE8" transform="rotate(10 282 85)" />
+              </g>
+
+              <!-- 토끼 얼굴 -->
+              <ellipse id="face-bg" cx="200" cy="225" rx="130" ry="115" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="8" />
+
+              <g id="face-features">
+                <!-- 볼터치 -->
+                <circle id="cheek-left" cx="120" cy="245" r="18" fill="#F472B6" opacity="0.5" />
+                <circle id="cheek-right" cx="280" cy="245" r="18" fill="#F472B6" opacity="0.5" />
+
+                <!-- 눈썹 -->
+                <g stroke="#4A3E3D" stroke-width="5" stroke-linecap="round" fill="none">
+                  <path id="eyebrow-left" d="M 130,160 Q 148,153 165,160" />
+                  <path id="eyebrow-right" d="M 235,160 Q 252,153 270,160" />
+                </g>
+
+                <!-- 눈 -->
+                <g id="eye-left-group">
+                  <g id="eye-left" transform-origin="148 198">
+                    <circle cx="148" cy="198" r="22" fill="#4A3E3D" />
+                    <g id="pupil-left">
+                      <circle cx="142" cy="190" r="7" fill="#FFFFFF" />
+                      <circle cx="154" cy="204" r="3.5" fill="#FFFFFF" />
+                    </g>
+                    <path id="eyelid-left" d="M 120,170 L 176,170 A 22 22 0 0 1 120 170 Z" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="5" style="display:none;" />
+                  </g>
+                </g>
+                <g id="eye-right-group">
+                  <g id="eye-right" transform-origin="252 198">
+                    <circle cx="252" cy="198" r="22" fill="#4A3E3D" />
+                    <g id="pupil-right">
+                      <circle cx="246" cy="190" r="7" fill="#FFFFFF" />
+                      <circle cx="258" cy="204" r="3.5" fill="#FFFFFF" />
+                    </g>
+                    <path id="eyelid-right" d="M 224,170 L 280,170 A 22 22 0 0 1 224 170 Z" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="5" style="display:none;" />
+                  </g>
+                </g>
+
+                <!-- 코 -->
+                <ellipse id="nose" cx="200" cy="220" rx="9" ry="7" fill="#F472B6" stroke="#4A3E3D" stroke-width="3" />
+
+                <!-- 앞니 파츠 (토끼 전용) -->
+                <rect id="teeth" x="193" y="240" width="14" height="12" rx="3" fill="#FFFFFF" stroke="#4A3E3D" stroke-width="3" />
+
+                <!-- 입 -->
+                <g id="mouth-group">
+                  <path id="mouth-inside" d="M 182,238 Q 200,238 218,238 Q 200,275 182,238 Z" fill="#991B1B" style="display:none;" />
+                  <path id="tongue" d="M 188,252 Q 200,242 212,252 Q 200,272 188,252 Z" fill="#F472B6" style="display:none;" />
+                  <path id="mouth-path" d="M 182,238 Q 191,245 200,238 Q 209,245 218,238" fill="none" stroke="#4A3E3D" stroke-width="5" stroke-linecap="round" />
+                </g>
+              </g>
+            </g>
+          </svg>
+        `
+      },
+      bear: {
+        name: "곰",
+        themeClass: "bg-theme-bear",
+        svg: `
+          <svg viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+            <ellipse cx="200" cy="370" rx="115" ry="15" fill="rgba(0,0,0,0.08)" />
+
+            <g id="root-head" transform-origin="200 210">
+              
+              <!-- 동그란 곰 귀 -->
+              <g id="ears-left" transform-origin="95 100">
+                <circle cx="95" cy="100" r="48" fill="#EAB308" stroke="#4A3E3D" stroke-width="8" />
+                <circle cx="95" cy="100" r="28" fill="#FEF08A" />
+              </g>
+              <g id="ears-right" transform-origin="305 100">
+                <circle cx="305" cy="100" r="48" fill="#EAB308" stroke="#4A3E3D" stroke-width="8" />
+                <circle cx="305" cy="100" r="28" fill="#FEF08A" />
+              </g>
+
+              <!-- 곰 머리 -->
+              <circle id="face-bg" cx="200" cy="215" r="135" fill="#FACC15" stroke="#4A3E3D" stroke-width="8" />
+
+              <g id="face-features">
+                <!-- 입 주변 주둥이(Muzzle) 패치 -->
+                <ellipse cx="200" cy="240" rx="55" ry="42" fill="#FEF9C3" stroke="#4A3E3D" stroke-width="5" />
+
+                <!-- 볼터치 -->
+                <ellipse id="cheek-left" cx="110" cy="235" rx="22" ry="14" fill="#FB923C" opacity="0.6" />
+                <ellipse id="cheek-right" cx="290" cy="235" rx="22" ry="14" fill="#FB923C" opacity="0.6" />
+
+                <!-- 눈썹 -->
+                <g stroke="#4A3E3D" stroke-width="6" stroke-linecap="round" fill="none">
+                  <path id="eyebrow-left" d="M 125,145 Q 145,135 165,145" />
+                  <path id="eyebrow-right" d="M 235,145 Q 255,135 275,145" />
+                </g>
+
+                <!-- 눈 -->
+                <g id="eye-left-group">
+                  <g id="eye-left" transform-origin="145 180">
+                    <circle cx="145" cy="180" r="22" fill="#4A3E3D" />
+                    <g id="pupil-left">
+                      <circle cx="139" cy="173" r="7" fill="#FFFFFF" />
+                    </g>
+                    <path id="eyelid-left" d="M 118,155 L 172,155 A 22 22 0 0 1 118 155 Z" fill="#FACC15" stroke="#4A3E3D" stroke-width="5" style="display:none;" />
+                  </g>
+                </g>
+                <g id="eye-right-group">
+                  <g id="eye-right" transform-origin="255 180">
+                    <circle cx="255" cy="180" r="22" fill="#4A3E3D" />
+                    <g id="pupil-right">
+                      <circle cx="249" cy="173" r="7" fill="#FFFFFF" />
+                    </g>
+                    <path id="eyelid-right" d="M 228,155 L 282,155 A 22 22 0 0 1 228 155 Z" fill="#FACC15" stroke="#4A3E3D" stroke-width="5" style="display:none;" />
+                  </g>
+                </g>
+
+                <!-- 코 -->
+                <ellipse id="nose" cx="200" cy="218" rx="16" ry="11" fill="#4A3E3D" />
+
+                <!-- 입 -->
+                <g id="mouth-group">
+                  <path id="mouth-inside" d="M 180,235 Q 200,235 220,235 Q 200,275 180,235 Z" fill="#7F1D1D" style="display:none;" />
+                  <path id="tongue" d="M 186,250 Q 200,240 214,250 Q 200,270 186,250 Z" fill="#FB923C" style="display:none;" />
+                  <path id="mouth-path" d="M 180,235 Q 190,245 200,235 Q 210,245 220,235" fill="none" stroke="#4A3E3D" stroke-width="6" stroke-linecap="round" />
+                </g>
+              </g>
+            </g>
+          </svg>
+        `
+      }
+    };
+
+    /* =========================================================================
+     * 3. 애플리케이션 상태 관리자 (State)
+     * ========================================================================= */
+    const state = {
+      currentCharacter: "cat",
+      landmarker: null,
+      webcamRunning: false,
+      lastVideoTime: -1,
+      faceDetected: false,
+      
+      // 사용자 캘리브레이션 오프셋
+      offsets: { ...CONFIG.DEFAULT_OFFSETS },
+      isCalibrating: false,
+
+      // 스무딩 처리된 보정값들
+      smoothed: {
+        yaw: 0, pitch: 0, roll: 0,
+        eyeBlinkLeft: 0, eyeBlinkRight: 0,
+        eyeLookInL: 0, eyeLookOutL: 0, eyeLookUpL: 0, eyeLookDownL: 0,
+        jawOpen: 0, mouthSmileL: 0, mouthSmileR: 0, mouthPucker: 0, mouthFunnel: 0,
+        browInnerUp: 0, browDownL: 0, browDownR: 0,
+        cheekPuff: 0, tongueOut: 0
+      },
+
+      // 귀 관성 애니메이션 상태
+      earPhysics: {
+        leftAngle: 0, leftVel: 0,
+        rightAngle: 0, rightVel: 0
+      },
+
+      // Idle 숨쉬기 애니메이션 타임스탬프
+      idleTime: 0,
+
+      // FPS 측정
+      fps: 0,
+      frameCount: 0,
+      lastFpsUpdate: performance.now()
+    };
+
+    /* =========================================================================
+     * 4. 수학 & 지수이동평균(EMA) 스무딩 유틸리티
+     * ========================================================================= */
+    const MathUtils = {
+      // Clamp 함수
+      clamp: (val, min, max) => Math.min(Math.max(val, min), max),
+      
+      // 선형 보간 (Lerp)
+      lerp: (start, end, amt) => (1 - amt) * start + amt * end,
+
+      // EMA 스무딩
+      ema: (current, target, alpha) => current + alpha * (target - current),
+
+      /**
+       * 4x4 행렬에서 오일러 각(Yaw, Pitch, Roll) 추출
+       * MediaPipe facialTransformationMatrixes 사용
+       */
+      matrixToEulerAngles: (matrix) => {
+        // 행렬 4x4 열기준
+        const m00 = matrix[0], m01 = matrix[4], m02 = matrix[8];
+        const m10 = matrix[1], m11 = matrix[5], m12 = matrix[9];
+        const m20 = matrix[2], m21 = matrix[6], m22 = matrix[10];
+
+        let pitch, yaw, roll;
+
+        // Yaw (Y축 회전)
+        yaw = Math.asin(-MathUtils.clamp(m20, -1, 1));
+
+        if (Math.abs(m20) < 0.99999) {
+          // Roll (Z축 회전)
+          roll = Math.atan2(m10, m00);
+          // Pitch (X축 회전)
+          pitch = Math.atan2(m21, m22);
+        } else {
+          roll = Math.atan2(-m01, m11);
+          pitch = 0;
+        }
+
+        // Radian -> Degree 변환
+        return {
+          pitch: (pitch * 180) / Math.PI,
+          yaw: (yaw * 180) / Math.PI,
+          roll: (roll * 180) / Math.PI
+        };
+      }
+    };
+
+    /* =========================================================================
+     * 5. MediaPipe 초기화 & 카메라 구동
+     * ========================================================================= */
+    async function initMediaPipe() {
+      const loadingOverlay = document.getElementById("loading-overlay");
+      const loadingText = document.getElementById("loading-text");
+      loadingOverlay.classList.remove("hidden");
+
+      try {
+        loadingText.innerText = "비전 WASM 모듈 로딩 중...";
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+        );
+
+        loadingText.innerText = "FaceLandmarker 모델 다운로드 중...";
+        
+        // GPU 우선 시도, 실패 시 CPU 폴백
+        try {
+          state.landmarker = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+              delegate: "GPU"
+            },
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: true,
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+        } catch (gpuError) {
+          console.warn("GPU Delegate 실패, CPU로 폴백합니다:", gpuError);
+          state.landmarker = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+              delegate: "CPU"
+            },
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: true,
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+        }
+
+        loadingOverlay.classList.add("hidden");
+      } catch (err) {
+        console.error("MediaPipe 초기화 실패:", err);
+        showError("모델 로딩 실패", "AI 파이프라인 모델을 불러올 수 없습니다. 인터넷 연결을 확인해 주세요.");
+      }
+    }
+
+    async function startWebcam() {
+      const video = document.getElementById("webcam-video");
+      const startOverlay = document.getElementById("start-overlay");
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        });
+
+        video.srcObject = stream;
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+
+        state.webcamRunning = true;
+        startOverlay.classList.add("hidden");
+
+        // 메인 프레임 루프 시작
+        requestAnimationFrame(renderLoop);
+
+      } catch (err) {
+        console.error("웹캠 접근 오류:", err);
+        let msg = "웹캠에 접근할 수 없습니다. 카메라 권한을 허용해 주세요.";
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+          msg += " (보안 정책으로 인해 HTTPS 환경이 필요할 수 있습니다.)";
+        }
+        showError("카메라 접근 거부", msg);
+      }
+    }
+
+    /* =========================================================================
+     * 6. 표정 매핑 & 관성 물리 계산
+     * ========================================================================= */
+    function processLandmarks(results) {
+      const now = performance.now();
+      
+      // FPS 계산
+      state.frameCount++;
+      if (now - state.lastFpsUpdate >= 1000) {
+        state.fps = state.frameCount;
+        state.frameCount = 0;
+        state.lastFpsUpdate = now;
+        document.getElementById("fps-counter").innerText = `${state.fps} FPS`;
+      }
+
+      const statusBadge = document.getElementById("status-badge");
+
+      // 얼굴 미감지 처리
+      if (!results.faceBlendshapes || results.faceBlendshapes.length === 0) {
+        state.faceDetected = false;
+        statusBadge.classList.remove("opacity-0");
+
+        // 기본 표정으로 서서히 복귀 (Rest Pose)
+        state.smoothed.yaw = MathUtils.ema(state.smoothed.yaw, 0, 0.05);
+        state.smoothed.pitch = MathUtils.ema(state.smoothed.pitch, 0, 0.05);
+        state.smoothed.roll = MathUtils.ema(state.smoothed.roll, 0, 0.05);
+        state.smoothed.eyeBlinkLeft = MathUtils.ema(state.smoothed.eyeBlinkLeft, 0, 0.05);
+        state.smoothed.eyeBlinkRight = MathUtils.ema(state.smoothed.eyeBlinkRight, 0, 0.05);
+        state.smoothed.jawOpen = MathUtils.ema(state.smoothed.jawOpen, 0, 0.05);
+        state.smoothed.mouthSmileL = MathUtils.ema(state.smoothed.mouthSmileL, 0, 0.05);
+        state.smoothed.mouthSmileR = MathUtils.ema(state.smoothed.mouthSmileR, 0, 0.05);
+        return;
+      }
+
+      state.faceDetected = true;
+      statusBadge.classList.add("opacity-0");
+
+      // 1) Head Pose (Transform Matrix -> Euler Angles)
+      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes[0]) {
+        const mat = results.facialTransformationMatrixes[0].data;
+        const euler = MathUtils.matrixToEulerAngles(mat);
+
+        // 오일러 각 클램프
+        const rawPitch = MathUtils.clamp(euler.pitch, -CONFIG.PITCH_LIMIT, CONFIG.PITCH_LIMIT);
+        const rawYaw = MathUtils.clamp(-euler.yaw, -CONFIG.YAW_LIMIT, CONFIG.YAW_LIMIT); // 거울 모드 반전
+        const rawRoll = MathUtils.clamp(-euler.roll, -CONFIG.ROLL_LIMIT, CONFIG.ROLL_LIMIT);
+
+        state.smoothed.pitch = MathUtils.ema(state.smoothed.pitch, rawPitch, CONFIG.SMOOTH_POSE);
+        state.smoothed.yaw = MathUtils.ema(state.smoothed.yaw, rawYaw, CONFIG.SMOOTH_POSE);
+        state.smoothed.roll = MathUtils.ema(state.smoothed.roll, rawRoll, CONFIG.SMOOTH_POSE);
+      }
+
+      // 2) Blendshapes 추출
+      const blendshapes = results.faceBlendshapes[0].categories;
+      const bsMap = {};
+      for (const b of blendshapes) {
+        bsMap[b.categoryName] = b.score;
+      }
+
+      // 슬라이더 민감도 가져오기
+      const blinkSens = parseFloat(document.getElementById("slider-blink").value);
+      const mouthSens = parseFloat(document.getElementById("slider-mouth").value);
+
+      // Raw 값 계산 (캘리브레이션 오프셋 보정)
+      const getBS = (name, sens = 1.0) => {
+        const raw = bsMap[name] || 0;
+        const offset = state.offsets[name] || 0;
+        return MathUtils.clamp((raw - offset) * sens, 0, 1);
+      };
+
+      // 좌우 눈 깜빡임 독립 계산
+      const targetBlinkL = getBS("eyeBlinkLeft", blinkSens);
+      const targetBlinkR = getBS("eyeBlinkRight", blinkSens);
+
+      // 눈 시선 (Look In/Out/Up/Down)
+      const targetLookInL = getBS("eyeLookInLeft");
+      const targetLookOutL = getBS("eyeLookOutLeft");
+      const targetLookUpL = getBS("eyeLookUpLeft");
+      const targetLookDownL = getBS("eyeLookDownLeft");
+
+      // 입 표현
+      const targetJawOpen = getBS("jawOpen", mouthSens);
+      const targetSmileL = getBS("mouthSmileLeft", mouthSens);
+      const targetSmileR = getBS("mouthSmileRight", mouthSens);
+      const targetPucker = getBS("mouthPucker");
+      const targetFunnel = getBS("mouthFunnel");
+
+      // 눈썹 & 기타
+      const targetBrowInnerUp = getBS("browInnerUp");
+      const targetBrowDownL = getBS("browDownLeft");
+      const targetBrowDownR = getBS("browDownRight");
+      const targetCheekPuff = getBS("cheekPuff");
+      const targetTongue = getBS("tongueOut");
+
+      // 스무딩 적용
+      state.smoothed.eyeBlinkLeft = MathUtils.ema(state.smoothed.eyeBlinkLeft, targetBlinkL, CONFIG.SMOOTH_BLINK);
+      state.smoothed.eyeBlinkRight = MathUtils.ema(state.smoothed.eyeBlinkRight, targetBlinkR, CONFIG.SMOOTH_BLINK);
+      
+      state.smoothed.eyeLookInL = MathUtils.ema(state.smoothed.eyeLookInL, targetLookInL, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.eyeLookOutL = MathUtils.ema(state.smoothed.eyeLookOutL, targetLookOutL, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.eyeLookUpL = MathUtils.ema(state.smoothed.eyeLookUpL, targetLookUpL, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.eyeLookDownL = MathUtils.ema(state.smoothed.eyeLookDownL, targetLookDownL, CONFIG.SMOOTH_EXPRESSION);
+
+      state.smoothed.jawOpen = MathUtils.ema(state.smoothed.jawOpen, targetJawOpen, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.mouthSmileL = MathUtils.ema(state.smoothed.mouthSmileL, targetSmileL, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.mouthSmileR = MathUtils.ema(state.smoothed.mouthSmileR, targetSmileR, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.mouthPucker = MathUtils.ema(state.smoothed.mouthPucker, targetPucker, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.mouthFunnel = MathUtils.ema(state.smoothed.mouthFunnel, targetFunnel, CONFIG.SMOOTH_EXPRESSION);
+
+      state.smoothed.browInnerUp = MathUtils.ema(state.smoothed.browInnerUp, targetBrowInnerUp, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.browDownL = MathUtils.ema(state.smoothed.browDownL, targetBrowDownL, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.browDownR = MathUtils.ema(state.smoothed.browDownR, targetBrowDownR, CONFIG.SMOOTH_EXPRESSION);
+
+      state.smoothed.cheekPuff = MathUtils.ema(state.smoothed.cheekPuff, targetCheekPuff, CONFIG.SMOOTH_EXPRESSION);
+      state.smoothed.tongueOut = MathUtils.ema(state.smoothed.tongueOut, targetTongue, CONFIG.SMOOTH_EXPRESSION);
+
+      // 디버그 데이터 업데이트
+      updateDebugPanel();
+    }
+
+    /* =========================================================================
+     * 7. SVG 파츠 실시간 DOM 업데이트 (렌더링)
+     * ========================================================================= */
+    function updateAvatarDOM() {
+      const s = state.smoothed;
+      
+      // Idle 숨쉬기 보정값 (얼굴 감지 안될 때나 정지 시 살아있는 느낌)
+      state.idleTime += 0.04;
+      const idleY = Math.sin(state.idleTime) * 3;
+      const idleEar = Math.cos(state.idleTime * 1.5) * 2;
+
+      // 1) 머리 전체 Transform (Roll + Pitch 상하이동 + Idle)
+      const rootHead = document.getElementById("root-head");
+      if (rootHead) {
+        const headY = (s.pitch / CONFIG.PITCH_LIMIT) * CONFIG.PARALLAX_Y + idleY;
+        rootHead.setAttribute("transform", `rotate(${s.roll}) translate(0, ${headY})`);
+      }
+
+      // 2) 귀 관성/스프링 물리 적용 (Roll/Yaw 속도에 부드럽게 반응)
+      const earTargetL = -s.roll * 0.5 - s.yaw * 0.3 + idleEar;
+      const earTargetR = -s.roll * 0.5 + s.yaw * 0.3 - idleEar;
+
+      // 스프링 가속도 계산
+      state.earPhysics.leftVel += (earTargetL - state.earPhysics.leftAngle) * CONFIG.EAR_SPRING_STIFFNESS;
+      state.earPhysics.leftVel *= CONFIG.EAR_SPRING_DAMPING;
+      state.earPhysics.leftAngle += state.earPhysics.leftVel;
+
+      state.earPhysics.rightVel += (earTargetR - state.earPhysics.rightAngle) * CONFIG.EAR_SPRING_STIFFNESS;
+      state.earPhysics.rightVel *= CONFIG.EAR_SPRING_DAMPING;
+      state.earPhysics.rightAngle += state.earPhysics.rightVel;
+
+      const earsL = document.getElementById("ears-left");
+      const earsR = document.getElementById("ears-right");
+      if (earsL) earsL.setAttribute("transform", `rotate(${state.earPhysics.leftAngle})`);
+      if (earsR) earsR.setAttribute("transform", `rotate(${state.earPhysics.rightAngle})`);
+
+      // 3) 얼굴 내부 파츠 패럴랙스 (Yaw/Pitch 3D 체감 효과)
+      const faceFeatures = document.getElementById("face-features");
+      if (faceFeatures) {
+        const parallaxX = (s.yaw / CONFIG.YAW_LIMIT) * CONFIG.PARALLAX_X;
+        const parallaxY = (s.pitch / CONFIG.PITCH_LIMIT) * (CONFIG.PARALLAX_Y * 0.5);
+        faceFeatures.setAttribute("transform", `translate(${parallaxX}, ${parallaxY})`);
+      }
+
+      // 4) 눈 깜빡임 & 눈꺼풀
+      const eyeL = document.getElementById("eye-left");
+      const eyeR = document.getElementById("eye-right");
+      const eyelidL = document.getElementById("eyelid-left");
+      const eyelidR = document.getElementById("eyelid-right");
+
+      // 감김 정도 계산 (0: 완전히 뜸, 1: 완전히 감음)
+      const scaleY_L = Math.max(0.08, 1 - s.eyeBlinkLeft * 0.95);
+      const scaleY_R = Math.max(0.08, 1 - s.eyeBlinkRight * 0.95);
+
+      if (eyeL) eyeL.setAttribute("transform", `scale(1, ${scaleY_L})`);
+      if (eyeR) eyeR.setAttribute("transform", `scale(1, ${scaleY_R})`);
+
+      // 완전히 감으면 눈꺼풀 표시 (^-^ 형태 표현 지원)
+      if (eyelidL) eyelidL.style.display = s.eyeBlinkLeft > 0.75 ? "block" : "none";
+      if (eyelidR) eyelidR.style.display = s.eyeBlinkRight > 0.75 ? "block" : "none";
+
+      // 5) 시선 (Pupil Offset)
+      const eyeOffsetX = (s.eyeLookOutL - s.eyeLookInL) * 8;
+      const eyeOffsetY = (s.eyeLookDownL - s.eyeLookUpL) * 6;
+      const pupilL = document.getElementById("pupil-left");
+      const pupilR = document.getElementById("pupil-right");
+      if (pupilL) pupilL.setAttribute("transform", `translate(${eyeOffsetX}, ${eyeOffsetY})`);
+      if (pupilR) pupilR.setAttribute("transform", `translate(${eyeOffsetX}, ${eyeOffsetY})`);
+
+      // 6) 눈썹 (Surprise, Angry, Sad)
+      const eyebrowL = document.getElementById("eyebrow-left");
+      const eyebrowR = document.getElementById("eyebrow-right");
+      if (eyebrowL && eyebrowR) {
+        const browY = -s.browInnerUp * 12 + (s.browDownL + s.browDownR) * 6;
+        const browRotL = (s.browDownL * 15) - (s.browInnerUp * 10);
+        const browRotR = (-s.browDownR * 15) + (s.browInnerUp * 10);
+
+        eyebrowL.setAttribute("transform", `translate(0, ${browY}) rotate(${browRotL})`);
+        eyebrowR.setAttribute("transform", `translate(0, ${browY}) rotate(${browRotR})`);
+      }
+
+      // 7) 볼터치 (Smile/Cheek Puff 시진해짐)
+      const cheekL = document.getElementById("cheek-left");
+      const cheekR = document.getElementById("cheek-right");
+      const smileAvg = (s.mouthSmileL + s.mouthSmileR) * 0.5;
+      const cheekOpacity = MathUtils.clamp(0.4 + smileAvg * 0.5 + s.cheekPuff * 0.4, 0.4, 1.0);
+      const cheekScale = 1 + s.cheekPuff * 0.3;
+
+      if (cheekL && cheekR) {
+        cheekL.style.opacity = cheekOpacity;
+        cheekR.style.opacity = cheekOpacity;
+        cheekL.setAttribute("transform", `scale(${cheekScale})`);
+        cheekR.setAttribute("transform", `scale(${cheekScale})`);
+      }
+
+      // 8) 입 모양 (Jaw Open, Smile, Pucker, Funnel, Tongue)
+      const mouthPath = document.getElementById("mouth-path");
+      const mouthInside = document.getElementById("mouth-inside");
+      const tongue = document.getElementById("tongue");
+      const teeth = document.getElementById("teeth");
+
+      if (mouthPath) {
+        const smileVal = (s.mouthSmileL + s.mouthSmileR) * 0.5;
+        const openVal = s.jawOpen;
+
+        if (openVal > 0.15) {
+          // 입 벌림 상태: 안쪽 배경 및 혀 표시
+          if (mouthInside) mouthInside.style.display = "block";
+          if (tongue) tongue.style.display = s.tongueOut > 0.2 || openVal > 0.4 ? "block" : "none";
+
+          // 입 수직 스케일링
+          const openHeight = 225 + openVal * 45;
+          mouthPath.setAttribute("d", `M 180,225 Q 200,${openHeight} 220,225`);
+          if (mouthInside) mouthInside.setAttribute("d", `M 180,225 Q 200,225 220,225 Q 200,${225 + openVal * 55} 180,225 Z`);
+          
+          if (teeth) teeth.setAttribute("transform", `translate(0, ${openVal * 10})`);
+        } else {
+          // 입 닫힘 상태: 미소/오므리기/시무룩 표현
+          if (mouthInside) mouthInside.style.display = "none";
+          if (tongue) tongue.style.display = "none";
+
+          if (s.mouthPucker > 0.3 || s.mouthFunnel > 0.3) {
+            // 오~ (Pucker/Funnel) 동그란 입
+            mouthPath.setAttribute("d", `M 192,230 Q 200,222 208,230 Q 200,238 192,230`);
+          } else if (smileVal > 0.2) {
+            // 웃음 (Smile) 입꼬리 방긋
+            const smileCurve = 230 + smileVal * 15;
+            mouthPath.setAttribute("d", `M 175,225 Q 200,${smileCurve} 225,225`);
+          } else {
+            // 기본 삼각 입/시무룩
+            mouthPath.setAttribute("d", `M 180,225 Q 190,233 200,224 Q 210,233 220,225`);
+          }
+        }
+      }
+    }
+
+    /* =========================================================================
+     * 8. 메인 프레임 루프 (requestAnimationFrame)
+     * ========================================================================= */
+    async function renderLoop() {
+      const video = document.getElementById("webcam-video");
+
+      if (state.webcamRunning && video.currentTime !== state.lastVideoTime) {
+        state.lastVideoTime = video.currentTime;
+
+        // FaceLandmarker 추론 수행
+        const results = state.landmarker.detectForVideo(video, performance.now());
+        processLandmarks(results);
+      }
+
+      // SVG DOM 위치 및 모양 갱신
+      updateAvatarDOM();
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    /* =========================================================================
+     * 9. 캘리브레이션 & 디버그 패널 유틸
+     * ========================================================================= */
+    function triggerCalibration() {
+      if (!state.faceDetected) {
+        alert("얼굴이 감지된 상태에서 캘리브레이션을 진행해 주세요.");
+        return;
+      }
+
+      const overlay = document.getElementById("calibrate-overlay");
+      const countEl = document.getElementById("calibrate-count");
+      overlay.classList.remove("hidden");
+
+      let count = 3;
+      countEl.innerText = count;
+
+      const timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countEl.innerText = count;
+        } else {
+          clearInterval(timer);
+          overlay.classList.add("hidden");
+
+          // 현재 상태를 기준선(Baseline)으로 저장
+          state.offsets.eyeBlinkLeft = state.smoothed.eyeBlinkLeft;
+          state.offsets.eyeBlinkRight = state.smoothed.eyeBlinkRight;
+          state.offsets.jawOpen = state.smoothed.jawOpen;
+          state.offsets.mouthSmileLeft = state.smoothed.mouthSmileL;
+          state.offsets.mouthSmileRight = state.smoothed.mouthSmileR;
+        }
+      }, 1000);
+    }
+
+    function updateDebugPanel() {
+      const panel = document.getElementById("debug-panel");
+      if (panel.classList.contains("hidden")) return;
+
+      const s = state.smoothed;
+      document.getElementById("dbg-yaw").innerText = s.yaw.toFixed(1);
+      document.getElementById("dbg-pitch").innerText = s.pitch.toFixed(1);
+      document.getElementById("dbg-roll").innerText = s.roll.toFixed(1);
+      document.getElementById("dbg-blink-l").innerText = s.eyeBlinkLeft.toFixed(2);
+      document.getElementById("dbg-blink-r").innerText = s.eyeBlinkRight.toFixed(2);
+      document.getElementById("dbg-jaw").innerText = s.jawOpen.toFixed(2);
+      document.getElementById("dbg-smile").innerText = ((s.mouthSmileL + s.mouthSmileR)*0.5).toFixed(2);
+      document.getElementById("dbg-tongue").innerText = s.tongueOut.toFixed(2);
+      document.getElementById("dbg-puff").innerText = s.cheekPuff.toFixed(2);
+    }
+
+    /* =========================================================================
+     * 10. 스크린샷 기능 (SVG -> Canvas -> PNG)
+     * ========================================================================= */
+    function takeScreenshot() {
+      const container = document.getElementById("avatar-container");
+      const svg = container.querySelector("svg");
+      if (!svg) return;
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const URLObj = window.URL || window.webkitURL || window;
+      const blobURL = URLObj.createObjectURL(svgBlob);
+
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 800;
+        const context = canvas.getContext("2d");
+
+        // 현재 테마 배경색 칠하기
+        const charConfig = CHARACTERS[state.currentCharacter];
+        let bgColor = "#FFF5F5";
+        if (state.currentCharacter === "rabbit") bgColor = "#FDF2F8";
+        if (state.currentCharacter === "bear") bgColor = "#FEFCE8";
+
+        context.fillStyle = bgColor;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        // SVG 이미지 그리기
+        context.drawImage(image, 0, 0, 800, 800);
+
+        // PNG 다운로드 링크 생성
+        const a = document.createElement("a");
+        a.download = `Avatar_${state.currentCharacter}_${Date.now()}.png`;
+        a.href = canvas.toDataURL("image/png");
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URLObj.revokeObjectURL(blobURL);
+      };
+      image.src = blobURL;
+    }
+
+    /* =========================================================================
+     * 11. UI 이벤트 바인딩 & 캐릭터 전환
+     * ========================================================================= */
+    function selectCharacter(charKey) {
+      if (!CHARACTERS[charKey]) return;
+
+      state.currentCharacter = charKey;
+      const charConfig = CHARACTERS[charKey];
+
+      // 배경 테마 전환
+      document.body.className = `${charConfig.themeClass} min-h-screen transition-all duration-700 text-slate-800 flex flex-col justify-between`;
+
+      // 캐릭터 SVG 삽입 애니메이션
+      const container = document.getElementById("avatar-container");
+      container.style.opacity = "0";
+      container.style.transform = "scale(0.9)";
+
+      setTimeout(() => {
+        container.innerHTML = charConfig.svg;
+        container.style.opacity = "1";
+        container.style.transform = "scale(1)";
+      }, 150);
+
+      // 하단 버튼 스타일 갱신
+      document.querySelectorAll(".char-btn").forEach((btn) => {
+        const isCurrent = btn.dataset.char === charKey;
+        if (isCurrent) {
+          btn.className = "char-btn flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 bg-pink-500 text-white shadow-md shadow-pink-500/20";
+        } else {
+          btn.className = "char-btn flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-slate-600 hover:bg-white/80";
+        }
+      });
+    }
+
+    function showError(title, message) {
+      const errOverlay = document.getElementById("error-overlay");
+      document.getElementById("error-title").innerText = title;
+      document.getElementById("error-msg").innerText = message;
+      
+      const newTabBtn = document.getElementById("btn-error-newtab");
+      newTabBtn.href = window.location.href;
+      newTabBtn.classList.remove("hidden");
+      
+      errOverlay.classList.remove("hidden");
+    }
+
+    // DOM 생성 완료 시 이벤트 등록
+    window.addEventListener("DOMContentLoaded", () => {
+      // Lucide 아이콘 초기화
+      lucide.createIcons();
+
+      // 캐릭터 초기 렌더링
+      selectCharacter("cat");
+
+      // 시작 버튼
+      document.getElementById("btn-start-camera").addEventListener("click", () => {
+        initMediaPipe().then(() => {
+          startWebcam();
+        });
+      });
+
+      // 캐릭터 셀렉터 클릭
+      document.querySelectorAll(".char-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const char = e.currentTarget.dataset.char;
+          selectCharacter(char);
+        });
+      });
+
+      // 캘리브레이션 버튼
+      document.getElementById("btn-calibrate").addEventListener("click", triggerCalibration);
+
+      // 스크린샷 버튼
+      document.getElementById("btn-screenshot").addEventListener("click", takeScreenshot);
+
+      // 디버그 토글
+      document.getElementById("btn-toggle-debug").addEventListener("click", () => {
+        document.getElementById("debug-panel").classList.toggle("hidden");
+      });
+
+      // 소형 웹캠 온/오프 토글
+      document.getElementById("btn-toggle-cam").addEventListener("click", () => {
+        const video = document.getElementById("webcam-video");
+        video.classList.toggle("hidden");
+      });
+
+      // 에러 재시도 버튼
+      document.getElementById("btn-error-retry").addEventListener("click", () => {
+        document.getElementById("error-overlay").classList.add("hidden");
+        startWebcam();
+      });
+    });
+  </script>
+</body>
+</html>
